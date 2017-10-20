@@ -254,6 +254,9 @@ class Server {
 						$view
 					)));
 				}
+				$this->server->addPlugin(new \OCA\Dav\CalDAV\BirthdayCalendar\EnablePlugin(
+					\OC::$server->getConfig()
+				));
 			}
 
 			// register plugins from apps
