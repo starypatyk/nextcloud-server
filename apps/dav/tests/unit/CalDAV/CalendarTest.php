@@ -26,6 +26,7 @@ namespace OCA\DAV\Tests\unit\CalDAV;
 use OCA\DAV\CalDAV\BirthdayService;
 use OCA\DAV\CalDAV\CalDavBackend;
 use OCA\DAV\CalDAV\Calendar;
+use OCP\IConfig;
 use OCP\IL10N;
 use Sabre\DAV\PropPatch;
 use Sabre\VObject\Reader;
@@ -36,10 +37,14 @@ class CalendarTest extends TestCase {
 	/** @var IL10N */
 	protected $l10n;
 
+	/** @var IConfig */
+	protected $config;
+
 	public function setUp() {
 		parent::setUp();
 		$this->l10n = $this->getMockBuilder('\OCP\IL10N')
 			->disableOriginalConstructor()->getMock();
+		$this->config = $this->createMock(IConfig::class);
 		$this->l10n
 			->expects($this->any())
 			->method('t')
@@ -61,7 +66,7 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$c->delete();
 	}
 
@@ -81,7 +86,7 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$c->delete();
 	}
 
@@ -90,6 +95,8 @@ class CalendarTest extends TestCase {
 		$backend = $this->createMock(CalDavBackend::class);
 		$backend->expects($this->never())->method('updateShares');
 		$backend->expects($this->never())->method('getShares');
+
+		$this->config->expects($this->never())->method('setUserValue');
 
 		$backend->expects($this->once())->method('deleteCalendar')
 			->with(666);
@@ -100,7 +107,28 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
+		$c->delete();
+	}
+
+	public function testDeleteBirthdayCalendar() {
+		/** @var \PHPUnit_Framework_MockObject_MockObject | CalDavBackend $backend */
+		$backend = $this->createMock(CalDavBackend::class);
+		$backend->expects($this->once())->method('deleteCalendar')
+			->with(666);
+
+		$this->config->expects($this->once())
+			->method('setUserValue')
+			->with('user1', 'dav', 'generateBirthdayCalendar', 'no');
+
+		$calendarInfo = [
+			'{http://owncloud.org/ns}owner-principal' => 'principals/users/user1',
+			'principaluri' => 'principals/users/user1',
+			'id' => 666,
+			'uri' => 'contact_birthdays',
+		];
+
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$c->delete();
 	}
 
@@ -143,7 +171,7 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'default'
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$propPatch = new PropPatch($mutations);
 
 		if (!$shared) {
@@ -173,7 +201,7 @@ class CalendarTest extends TestCase {
 		if ($hasOwnerSet) {
 			$calendarInfo['{http://owncloud.org/ns}owner-principal'] = 'user1';
 		}
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$acl = $c->getACL();
 		$childAcl = $c->getChildACL();
 
@@ -268,7 +296,7 @@ class CalendarTest extends TestCase {
 			$calendarInfo['{http://owncloud.org/ns}owner-principal'] = 'user1';
 
 		}
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$children = $c->getChildren();
 		$this->assertEquals($expectedChildren, count($children));
 		$children = $c->getMultipleChildren(['event-0', 'event-1', 'event-2']);
@@ -352,7 +380,7 @@ EOD;
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 
 		$this->assertEquals(count($c->getChildren()), $expectedChildren);
 
