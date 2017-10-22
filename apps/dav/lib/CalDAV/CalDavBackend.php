@@ -33,6 +33,7 @@ use OCA\DAV\Connector\Sabre\Principal;
 use OCA\DAV\DAV\Sharing\Backend;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
+use OCP\ILogger;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\Security\ISecureRandom;
@@ -144,6 +145,9 @@ class CalDavBackend extends AbstractBackend implements SyncSupport, Subscription
 	/** @var ISecureRandom */
 	private $random;
 
+	/** @var ILogger */
+	private $logger;
+
 	/** @var EventDispatcherInterface */
 	private $dispatcher;
 
@@ -161,6 +165,7 @@ class CalDavBackend extends AbstractBackend implements SyncSupport, Subscription
 	 * @param IUserManager $userManager
 	 * @param IGroupManager $groupManager
 	 * @param ISecureRandom $random
+	 * @param ILogger $logger
 	 * @param EventDispatcherInterface $dispatcher
 	 * @param bool $legacyEndpoint
 	 */
@@ -169,6 +174,7 @@ class CalDavBackend extends AbstractBackend implements SyncSupport, Subscription
 								IUserManager $userManager,
 								IGroupManager $groupManager,
 								ISecureRandom $random,
+								ILogger $logger,
 								EventDispatcherInterface $dispatcher,
 								$legacyEndpoint = false) {
 		$this->db = $db;
@@ -176,6 +182,7 @@ class CalDavBackend extends AbstractBackend implements SyncSupport, Subscription
 		$this->userManager = $userManager;
 		$this->sharingBackend = new Backend($this->db, $this->userManager, $groupManager, $principalBackend, 'calendar');
 		$this->random = $random;
+		$this->logger = $logger;
 		$this->dispatcher = $dispatcher;
 		$this->legacyEndpoint = $legacyEndpoint;
 	}
@@ -1197,7 +1204,17 @@ class CalDavBackend extends AbstractBackend implements SyncSupport, Subscription
 		$result = [];
 		while($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 			if ($requirePostFilter) {
-				if (!$this->validateFilterForObject($row, $filters)) {
+				// validateFilterForObject will parse the calendar data
+				// catch parsing errors
+				try {
+					$matches = $this->validateFilterForObject($row, $filters);
+				} catch(\Exception $ex) {
+					$this->logger->error('Catched parsing exception for calendar data. This indicates invalid calendar data. URI:' . $row['uri']);
+					$this->logger->logException($ex);
+					continue;
+				}
+
+				if (!$matches) {
 					continue;
 				}
 			}
