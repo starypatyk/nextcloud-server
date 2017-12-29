@@ -290,6 +290,7 @@ class OC_Util {
 			OC_Hook::emit('OC_Filesystem', 'setup', array('user' => $user, 'user_dir' => $userDir));
 		}
 		\OC::$server->getEventLogger()->end('setup_fs');
+		self::$fsSetup = true;
 		return true;
 	}
 
