@@ -116,7 +116,7 @@
     "webdav": "^5.0.0-r3"
   },
   "devDependencies": {
-    "@babel/node": "^7.20.7",
+    "@babel/node": "^7.22.1",
     "@babel/preset-typescript": "^7.18.6",
     "@cypress/browserify-preprocessor": "^3.0.2",
     "@cypress/vue2": "^2.0.1",
